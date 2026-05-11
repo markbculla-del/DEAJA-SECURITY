@@ -21,11 +21,13 @@ const col = {
 const tag  = `${col.purple}${col.bright}  [EmojiSync]${col.reset}`;
 const line = `${col.purple}${col.bright}  ─────────────────────────────────────${col.reset}`;
 
+const FETCH_TIMEOUT_MS = 10_000;
+
 function fetchEmojiImage(id, animated) {
     const ext = animated ? 'gif' : 'webp';
     const url = `https://cdn.discordapp.com/emojis/${id}.${ext}`;
     return new Promise((resolve) => {
-        https.get(url, (res) => {
+        const req = https.get(url, (res) => {
             if (res.statusCode === 301 || res.statusCode === 302) {
                 fetchEmojiImageFromUrl(res.headers.location).then(resolve);
                 return;
@@ -35,18 +37,20 @@ function fetchEmojiImage(id, animated) {
             res.on('data', c => chunks.push(c));
             res.on('end', () => resolve(Buffer.concat(chunks)));
         }).on('error', () => resolve(null));
+        req.setTimeout(FETCH_TIMEOUT_MS, () => { req.destroy(); resolve(null); });
     });
 }
 
 function fetchEmojiImageFromUrl(url) {
     const mod = url.startsWith('https') ? https : require('http');
     return new Promise((resolve) => {
-        mod.get(url, (res) => {
+        const req = mod.get(url, (res) => {
             if (res.statusCode !== 200) { resolve(null); return; }
             const chunks = [];
             res.on('data', c => chunks.push(c));
             res.on('end', () => resolve(Buffer.concat(chunks)));
         }).on('error', () => resolve(null));
+        req.setTimeout(FETCH_TIMEOUT_MS, () => { req.destroy(); resolve(null); });
     });
 }
 
